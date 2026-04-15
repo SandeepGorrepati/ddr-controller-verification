@@ -1,0 +1,50 @@
+VCD info: dumpfile build/ddr_verif_env.vcd opened for output.
+SIM START: Structured DDR Verification Environment
+GENERATOR : creating transactions
+DRIVER    : READ  addr=30 exp=00000000 time=25000
+MONITOR   : READ  observed addr=30 data=00000000 time=45000
+SCOREBOARD: PASS addr=30 expected=00000000 got=00000000
+DRIVER    : WRITE addr=10 data=1234abcd time=55000
+MONITOR   : WRITE observed addr=10 data=1234abcd time=65000
+SCOREBOARD: WRITE recorded addr=10 data=1234abcd
+DRIVER    : READ  addr=10 exp=1234abcd time=75000
+MONITOR   : READ  observed addr=10 data=1234abcd time=95000
+SCOREBOARD: PASS addr=10 expected=1234abcd got=1234abcd
+DRIVER    : WRITE addr=20 data=deadbeef time=105000
+MONITOR   : WRITE observed addr=20 data=deadbeef time=115000
+SCOREBOARD: WRITE recorded addr=20 data=deadbeef
+DRIVER    : READ  addr=20 exp=deadbeef time=125000
+MONITOR   : READ  observed addr=20 data=deadbeef time=145000
+SCOREBOARD: PASS addr=20 expected=deadbeef got=deadbeef
+DRIVER    : WRITE addr=10 data=cafebabe time=155000
+MONITOR   : WRITE observed addr=10 data=cafebabe time=165000
+SCOREBOARD: WRITE recorded addr=10 data=cafebabe
+DRIVER    : READ  addr=10 exp=cafebabe time=175000
+MONITOR   : READ  observed addr=10 data=cafebabe time=195000
+SCOREBOARD: PASS addr=10 expected=cafebabe got=cafebabe
+DRIVER    : WRITE addr=24 data=c0895e81 time=205000
+MONITOR   : WRITE observed addr=24 data=c0895e81 time=215000
+SCOREBOARD: WRITE recorded addr=24 data=c0895e81
+DRIVER    : READ  addr=24 exp=c0895e81 time=225000
+MONITOR   : READ  observed addr=24 data=c0895e81 time=245000
+SCOREBOARD: PASS addr=24 expected=c0895e81 got=c0895e81
+DRIVER    : WRITE addr=09 data=b1f05663 time=255000
+MONITOR   : WRITE observed addr=09 data=b1f05663 time=265000
+SCOREBOARD: WRITE recorded addr=09 data=b1f05663
+DRIVER    : READ  addr=09 exp=b1f05663 time=275000
+MONITOR   : READ  observed addr=09 data=b1f05663 time=295000
+SCOREBOARD: PASS addr=09 expected=b1f05663 got=b1f05663
+DRIVER    : WRITE addr=0d data=46df998d time=305000
+MONITOR   : WRITE observed addr=0d data=46df998d time=315000
+SCOREBOARD: WRITE recorded addr=0d data=46df998d
+DRIVER    : READ  addr=0d exp=46df998d time=325000
+MONITOR   : READ  observed addr=0d data=46df998d time=345000
+SCOREBOARD: PASS addr=0d expected=46df998d got=46df998d
+DRIVER    : WRITE addr=65 data=89375212 time=355000
+MONITOR   : WRITE observed addr=65 data=89375212 time=365000
+SCOREBOARD: WRITE recorded addr=65 data=89375212
+DRIVER    : READ  addr=65 exp=89375212 time=375000
+MONITOR   : READ  observed addr=65 data=89375212 time=395000
+SCOREBOARD: PASS addr=65 expected=89375212 got=89375212
+COVERAGE SUMMARY: writes=7 reads=8 low_addr=13 mid_addr=2 high_addr=0 empty_reads=1 readbacks=7 overwrites=1
+ALL TESTS PASSED
