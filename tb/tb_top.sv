@@ -97,6 +97,30 @@ module tb_top;
         .done     (done)
     );
 
+
+    ddr_assertions u_assertions (
+        .clk       (clk),
+        .rst       (vif.rst),
+        .req_valid (vif.req_valid),
+        .req_ready (vif.req_ready),
+        .req_write (vif.req_write),
+        .req_addr  (vif.req_addr),
+        .req_wdata (vif.req_wdata),
+        .resp_valid(vif.resp_valid),
+        .resp_rdata(vif.resp_rdata)
+    );
+
+    coverage_tracker u_cov (
+        .clk       (clk),
+        .rst       (vif.rst),
+        .req_valid (vif.req_valid),
+        .req_ready (vif.req_ready),
+        .req_write (vif.req_write),
+        .req_addr  (vif.req_addr),
+        .resp_valid(vif.resp_valid),
+        .done      (done)
+    );
+
     initial clk = 1'b0;
     always #5 clk = ~clk;
 
