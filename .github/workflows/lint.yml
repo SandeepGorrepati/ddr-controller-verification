@@ -1,0 +1,22 @@
+name: RTL Lint
+
+# Verilator lint of the controller RTL on every push / PR -> status badge.
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  verilator-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Verilator
+        run: sudo apt-get update && sudo apt-get install -y verilator && verilator --version
+      - name: Lint controller RTL
+        run: |
+          verilator --lint-only -Wall \
+            -Wno-WIDTHEXPAND -Wno-WIDTHTRUNC -Wno-UNUSEDSIGNAL -Wno-DECLFILENAME \
+            rtl/ddr_controller.sv

@@ -1,9 +1,25 @@
 # DDR Controller Verification Environment (SystemVerilog)
 
 ## Overview
-This project implements a self-checking SystemVerilog verification environment for a simplified DDR-style memory controller.
+This project implements a self-checking SystemVerilog verification environment for a
+**simplified, DDR-style request/response memory controller**.
 
-The environment verifies read/write behavior, read response latency, overwrite handling, boundary-style address activity, request/response protocol behavior, and data correctness using a modular testbench architecture.
+> **Scope (honest):** this is a *simplified* memory controller used as a clean DUT to
+> demonstrate verification methodology — it is **not** a full DDR controller. It models
+> read/write with response latency, but does not implement DRAM banks, row/column
+> addressing, `ACT/PRE/RD/WR` command encoding, timing parameters (tRCD/tRP/tRAS/tRFC),
+> refresh, or bursts. Calling that out up front (rather than overclaiming "DDR
+> compliance") is deliberate — see the roadmap below for the path to a real DDR model.
+
+The environment verifies read/write behavior, read response latency, overwrite handling,
+boundary-style address activity, request/response protocol behavior, and data correctness
+using a modular testbench architecture. CI runs a Verilator lint on every push.
+
+## Roadmap — toward a real DDR controller
+1. Add a **command-based interface** (ACT / PRE / RD / WR / REF) instead of plain req/resp.
+2. Model **bank + row + column** addressing with per-bank open-row state.
+3. Add **timing parameters** (tRCD, tRP, tRAS, tRC, tRFC) and a **refresh** counter.
+4. Support **bursts** (BL8) and verify timing/ordering with SVA + a cycle-accurate model.
 
 ---
 
