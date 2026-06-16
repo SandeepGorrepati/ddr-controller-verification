@@ -1,0 +1,60 @@
+VCD info: dumpfile build/ddr_verif_env_modular.vcd opened for output.
+[DRIVER] write=0 addr=0x30 wdata=0x00000000 time=35000
+[DRIVER] write=1 addr=0x10 wdata=0x1234abcd time=65000
+[MONITOR][READ] addr=0x30 rdata=0x00000000 time=65000
+[SCB][PASS][READ] addr=0x30 exp=0x00000000 act=0x00000000 time=75000
+[MONITOR][WRITE] addr=0x10 data=0x1234abcd time=75000
+[SCB][PASS][WRITE] addr=0x10 data=0x1234abcd time=85000
+[DRIVER] write=0 addr=0x10 wdata=0x00000000 time=95000
+[DRIVER] write=1 addr=0x20 wdata=0xdeadbeef time=125000
+[MONITOR][READ] addr=0x10 rdata=0x1234abcd time=125000
+[SCB][PASS][READ] addr=0x10 exp=0x1234abcd act=0x1234abcd time=135000
+[MONITOR][WRITE] addr=0x20 data=0xdeadbeef time=135000
+[SCB][PASS][WRITE] addr=0x20 data=0xdeadbeef time=145000
+[DRIVER] write=0 addr=0x20 wdata=0x00000000 time=155000
+[DRIVER] write=1 addr=0x20 wdata=0xcafebabe time=185000
+[MONITOR][READ] addr=0x20 rdata=0xdeadbeef time=185000
+[SCB][PASS][READ] addr=0x20 exp=0xdeadbeef act=0xdeadbeef time=195000
+[MONITOR][WRITE] addr=0x20 data=0xcafebabe time=195000
+[SCB][PASS][WRITE] addr=0x20 data=0xcafebabe time=205000
+[DRIVER] write=0 addr=0x20 wdata=0x00000000 time=215000
+[DRIVER] write=1 addr=0x0a wdata=0xb92746d8 time=245000
+[MONITOR][READ] addr=0x20 rdata=0xcafebabe time=245000
+[SCB][PASS][READ] addr=0x20 exp=0xcafebabe act=0xcafebabe time=255000
+[MONITOR][WRITE] addr=0x0a data=0xb92746d8 time=255000
+[SCB][PASS][WRITE] addr=0x0a data=0xb92746d8 time=265000
+[DRIVER] write=0 addr=0x0a wdata=0x00000000 time=275000
+[DRIVER] write=1 addr=0x5d wdata=0x9aad6552 time=305000
+[MONITOR][READ] addr=0x0a rdata=0xb92746d8 time=305000
+[SCB][PASS][READ] addr=0x0a exp=0xb92746d8 act=0xb92746d8 time=315000
+[MONITOR][WRITE] addr=0x5d data=0x9aad6552 time=315000
+[SCB][PASS][WRITE] addr=0x5d data=0x9aad6552 time=325000
+[DRIVER] write=0 addr=0x5d wdata=0x00000000 time=335000
+[DRIVER] write=1 addr=0xec wdata=0x6860979f time=365000
+[MONITOR][READ] addr=0x5d rdata=0x9aad6552 time=365000
+[SCB][PASS][READ] addr=0x5d exp=0x9aad6552 act=0x9aad6552 time=375000
+[MONITOR][WRITE] addr=0xec data=0x6860979f time=375000
+[SCB][PASS][WRITE] addr=0xec data=0x6860979f time=385000
+[DRIVER] write=0 addr=0xec wdata=0x00000000 time=395000
+[DRIVER] write=1 addr=0x88 wdata=0x55b5aa4a time=425000
+[MONITOR][READ] addr=0xec rdata=0x6860979f time=425000
+[SCB][PASS][READ] addr=0xec exp=0x6860979f act=0x6860979f time=435000
+[MONITOR][WRITE] addr=0x88 data=0x55b5aa4a time=435000
+[SCB][PASS][WRITE] addr=0x88 data=0x55b5aa4a time=445000
+[DRIVER] write=0 addr=0x88 wdata=0x00000000 time=455000
+[MONITOR][READ] addr=0x88 rdata=0x55b5aa4a time=485000
+[SCB][PASS][READ] addr=0x88 exp=0x55b5aa4a act=0x55b5aa4a time=495000
+========================================
+SCOREBOARD SUMMARY: PASS=15 FAIL=0
+========================================
+========================================
+FUNCTIONAL COVERAGE SUMMARY
+Operation bins       : writes=7 reads=8
+Address range bins   : low=9 mid=2 high=4
+Response bins        : resp_seen=8
+Cross op x addr bins : W_LOW=4 W_MID=1 W_HIGH=2 R_LOW=5 R_MID=1 R_HIGH=2
+========================================
+========================================
+DDR PROTOCOL CHECK SUMMARY
+READS=8 RESPONSES=8 PASS=23 FAIL=0
+========================================

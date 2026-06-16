@@ -1,5 +1,7 @@
 # DDR Controller Verification Environment (SystemVerilog)
 
+![RTL Lint](https://github.com/SandeepGorrepati/ddr-controller-verification/actions/workflows/lint.yml/badge.svg)
+
 ## Overview
 This project implements a self-checking SystemVerilog verification environment for a
 **simplified, DDR-style request/response memory controller**.
