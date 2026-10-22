@@ -14,75 +14,38 @@ module ddr_assertions (
     input logic [31:0] resp_rdata
 );
 
-    logic   pending_read;
-    integer read_latency;
-    integer accepted_read_count;
-    integer response_count;
-    integer check_pass_count;
-    integer check_fail_count;
-
-    always_ff @(posedge clk or posedge rst) begin
-        if (rst) begin
-            pending_read        <= 1'b0;
-            read_latency        <= 0;
-            accepted_read_count <= 0;
-            response_count      <= 0;
-            check_pass_count    <= 0;
-            check_fail_count    <= 0;
+    // DUT accepts a read each cycle. At a sampling edge resp_valid reflects
+    // the request from two sampling edges ago (one registered DUT cycle).
+    logic accept_d1, accept_d2;
+    integer accepted_read_count, response_count, check_pass_count, check_fail_count;
+    always @(posedge clk or posedge rst) begin
+        if(rst) begin
+            accept_d1 <= 0; accept_d2 <= 0;
+            accepted_read_count <= 0; response_count <= 0;
+            check_pass_count <= 0; check_fail_count <= 0;
         end else begin
-
-            if (req_valid && req_ready) begin
-                if (!$isunknown(req_addr)) begin
-                    check_pass_count <= check_pass_count + 1;
-                end else begin
-                    check_fail_count <= check_fail_count + 1;
-                    $error("CHECK FAIL: req_addr is X/Z during accepted request at time %0t", $time);
-                end
+            accept_d1 <= req_valid && req_ready && !req_write;
+            accept_d2 <= accept_d1;
+            if(req_valid && req_ready) begin
+                if($isunknown(req_addr) || $isunknown(req_write) ||
+                   (req_write && $isunknown(req_wdata)))
+                    $fatal(1,"CHECK FAIL: unknown accepted request");
             end
-
-            if (req_valid && req_ready && !req_write) begin
-                accepted_read_count <= accepted_read_count + 1;
-
-                if (pending_read) begin
-                    check_fail_count <= check_fail_count + 1;
-                    $error("CHECK FAIL: new read accepted while previous read is pending at time %0t", $time);
-                end
-
-                pending_read <= 1'b1;
-                read_latency <= 0;
-            end else if (pending_read && !resp_valid) begin
-                read_latency <= read_latency + 1;
-
-                if (read_latency >= 4) begin
-                    check_fail_count <= check_fail_count + 1;
-                    $error("CHECK FAIL: resp_valid not seen within 1-4 cycles after accepted read at time %0t", $time);
-                    pending_read <= 1'b0;
-                    read_latency <= 0;
-                end
+            if(resp_valid !== accept_d2) begin
+                check_fail_count <= check_fail_count+1;
+                $fatal(1,"CHECK FAIL: missing, spurious or late response");
             end
-
-            if (resp_valid) begin
-                response_count <= response_count + 1;
-
-                if (!pending_read) begin
-                    check_fail_count <= check_fail_count + 1;
-                    $error("CHECK FAIL: resp_valid asserted without pending read at time %0t", $time);
-                end else begin
-                    check_pass_count <= check_pass_count + 1;
-                end
-
-                pending_read <= 1'b0;
-                read_latency <= 0;
-            end
+            if(resp_valid && $isunknown(resp_rdata))
+                $fatal(1,"CHECK FAIL: unknown response data");
+            if(req_valid && req_ready && !req_write)
+                accepted_read_count <= accepted_read_count+1;
+            if(resp_valid) response_count <= response_count+1;
+            check_pass_count <= check_pass_count+1;
         end
     end
-
     final begin
-        $display("========================================");
         $display("DDR PROTOCOL CHECK SUMMARY");
         $display("READS=%0d RESPONSES=%0d PASS=%0d FAIL=%0d",
-                 accepted_read_count, response_count, check_pass_count, check_fail_count);
-        $display("========================================");
+          accepted_read_count,response_count,check_pass_count,check_fail_count);
     end
-
 endmodule

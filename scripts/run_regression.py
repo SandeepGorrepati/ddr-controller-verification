@@ -26,7 +26,7 @@ SOURCES = [
 
 
 def run(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(cmd, cwd=cwd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    return subprocess.run(cmd, cwd=cwd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=60)
 
 
 def main() -> int:
@@ -46,7 +46,13 @@ def main() -> int:
     LOG.write_text(sim_res.stdout)
     print(sim_res.stdout)
 
-    bad_markers = ["SVA FAIL", "ASSERTION FAIL", "[SCB][FAIL]", "FAIL="]
+    if sim_res.returncode != 0:
+        print("REGRESSION FAILED: simulator exited nonzero")
+        return 1
+    import re
+    if "[SCB][FAIL]" in sim_res.stdout or "CHECK FAIL" in sim_res.stdout or re.search(r"FAIL=[1-9]", sim_res.stdout):
+        print("REGRESSION FAILED: checker failure")
+        return 1
     if "SCOREBOARD SUMMARY" not in sim_res.stdout:
         print("REGRESSION FAILED: scoreboard summary missing")
         return 1
@@ -66,3 +72,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
