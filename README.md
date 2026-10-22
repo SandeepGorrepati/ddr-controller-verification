@@ -1,169 +1,48 @@
-# DDR Controller Verification Environment (SystemVerilog)
+# Request/response memory-controller verification
 
-![RTL Lint](https://github.com/SandeepGorrepati/ddr-controller-verification/actions/workflows/lint.yml/badge.svg)
+![Memory regression](https://github.com/SandeepGorrepati/ddr-controller-verification/actions/workflows/regression.yml/badge.svg)
+![RTL lint](https://github.com/SandeepGorrepati/ddr-controller-verification/actions/workflows/lint.yml/badge.svg)
 
-## Overview
-This project implements a self-checking SystemVerilog verification environment for a
-**simplified, DDR-style request/response memory controller**.
+A self-checking SystemVerilog environment for a 256x32 request/response memory. The repository keeps its historical name, but the implemented DUT is not a DDR4 controller or PHY. It has no DRAM banks, ACT/PRE commands, refresh, bursts, or DDR timing parameters. The modular environment is UVM-inspired, not an implementation of the UVM class library.
 
-> **Scope (honest):** this is a *simplified* memory controller used as a clean DUT to
-> demonstrate verification methodology — it is **not** a full DDR controller. It models
-> read/write with response latency, but does not implement DRAM banks, row/column
-> addressing, `ACT/PRE/RD/WR` command encoding, timing parameters (tRCD/tRP/tRAS/tRFC),
-> refresh, or bursts. Calling that out up front (rather than overclaiming "DDR
-> compliance") is deliberate — see the roadmap below for the path to a real DDR model.
+## Contract
 
-The environment verifies read/write behavior, read response latency, overwrite handling,
-boundary-style address activity, request/response protocol behavior, and data correctness
-using a modular testbench architecture. CI runs a Verilator lint on every push.
+- Requests are accepted every cycle (`req_ready=1`). Addresses select words 0..255.
+- Accepted writes update memory; they do not produce responses.
+- Accepted reads produce a response one clock later and may arrive on consecutive cycles.
+- A response observes memory before a write on that same completion edge (read-before-write semantics).
+- Asynchronous active-high reset clears memory and cancels outstanding reads.
+- There is no response backpressure, reordering, or multiple response IDs.
 
-## Roadmap — toward a real DDR controller
-1. Add a **command-based interface** (ACT / PRE / RD / WR / REF) instead of plain req/resp.
-2. Model **bank + row + column** addressing with per-bank open-row state.
-3. Add **timing parameters** (tRCD, tRP, tRAS, tRC, tRFC) and a **refresh** counter.
-4. Support **bursts** (BL8) and verify timing/ordering with SVA + a cycle-accurate model.
+## Reproduce for free
 
----
-
-## Verification Architecture
-
-```text
-Generator -> Driver -> DUT -> Monitor -> Scoreboard
-                  |          |
-                  |          +-> SVA Protocol Checks
-                  +------------> Functional Coverage Tracker
-```
-
-### Components
-- **Generator:** Produces directed and constrained randomized read/write transactions
-- **Driver:** Drives transaction-level stimulus into the DUT request interface
-- **Monitor:** Observes request/response behavior and converts it into actual transactions
-- **Scoreboard:** Compares expected vs. observed memory behavior
-- **SVA Checker:** Verifies request-response timing, spurious response behavior, and valid address acceptance
-- **Coverage Tracker:** Tracks read/write bins, address-range bins, response bins, and operation x address cross bins
-- **DUT:** Simplified DDR-style memory controller with fixed 1-cycle read latency
-
----
-
-## DUT Interface Signals
-
-| Signal | Width | Description |
-|---|---:|---|
-| `req_valid` | 1 | Request valid |
-| `req_ready` | 1 | DUT ready |
-| `req_write` | 1 | 1 = write, 0 = read |
-| `req_addr` | 8 | Memory address |
-| `req_wdata` | 32 | Write data |
-| `resp_valid` | 1 | Read response valid |
-| `resp_rdata` | 32 | Read response data |
-
----
-
-## Verification Scenarios
-
-- Read from empty memory -> returns `0x00000000`
-- Write/readback at address `0x10`
-- Write/readback at address `0x20`
-- Overwrite address `0x20` and verify latest data wins
-- Constrained randomized write/read pairs across low, mid, and high address ranges
-- Request-response timing protocol checks using SVA
-- Scoreboard-based expected vs. observed comparison
-
----
-
-## Assertion Checks
-
-Implemented in `tb/ddr_assertions.sv`:
-
-- `p_read_response_within_4_cycles`: accepted reads must return `resp_valid` within 1-4 cycles
-- `p_no_spurious_response`: response must not occur without a pending read request
-- `p_known_addr_on_accept`: accepted request address must not be X/Z
-
----
-
-## Functional Coverage Tracking
-
-Implemented in `tb/coverage_tracker.sv`:
-
-- Operation bins: writes, reads
-- Address range bins: low, mid, high
-- Response bin: observed read responses
-- Cross bins: write/read x address range
-
----
-
-## How to Run
-
-### Recommended regression command
+Install Python 3 and Icarus Verilog, then run from the root:
 
 ```bash
 python3 scripts/run_regression.py
+python3 scripts/gen_stress.py
+iverilog -g2012 -s tb_stress -o build/stress rtl/ddr_controller.sv tb/ddr_assertions.sv tb/tb_stress.sv
+vvp build/stress
 ```
 
-The script compiles, runs, checks the scoreboard/assertion status, and saves the log to:
+CI runs both flows and saves logs as artifacts. Compilation, simulator failures, checker errors, missing summaries, and timeouts fail the job.
 
-```text
-proof/ddr_regression.log
-```
+## Verification evidence
 
-### Manual command
+| Environment | Result |
+|---|---|
+| Modular directed scoreboard | 15 passes, zero failures |
+| Updated directed protocol checker | Eight reads/eight responses; 80 checked cycles, zero failures |
+| Python cycle oracle | 2,200 traffic cycles; 1,329 read responses compared |
 
-```bash
-mkdir -p build proof
-iverilog -g2012 -gsupported-assertions -Wall -o build/ddr_verif_env_modular.out \
-rtl/ddr_controller.sv \
-tb/ddr_if.sv \
-tb/generator.sv \
-tb/driver.sv \
-tb/monitor.sv \
-tb/scoreboard.sv \
-tb/ddr_assertions.sv \
-tb/coverage_tracker.sv \
-tb/tb_top.sv
+The stress flow covers pipelined reads, mixed reads/writes, repeated/boundary addresses, idle cycles, and reset during traffic. The independent Python model generates the response-valid/data expectation for every cycle; the SV test compares the real DUT against those vectors.
 
-vvp build/ddr_verif_env_modular.out | tee proof/ddr_regression.log
+The protocol checker was corrected to support consecutive reads rather than flagging every new read while an earlier one remained pending. It now checks the exact registered latency, unknown request/data values, and missing/spurious responses. These are procedural assertions executed by Icarus; they are not concurrent SVA property declarations. Protocol counters reset with the DUT, so the final checker summary covers the last reset epoch; the stress test's response total spans the complete vector file.
 
-gtkwave build/ddr_verif_env_modular.vcd
-```
+The earlier committed log's 23 protocol checks are historical. They were never 23 scoreboard transactions. New protocol-check counts have a different definition and should not be compared as a coverage gain.
 
----
+## Limits
 
-## Expected Result
+The legacy modular generator/monitor/scoreboard demonstrates serialized directed verification. The separate oracle-based streaming test provides consecutive-read coverage; the legacy monitor is not claimed to be a general outstanding-transaction scoreboard. Manual coverage bins are scoped to their definitions. A real DDR command/timing model would be a separate extension requiring explicit implementation and verification.
 
-A passing run should include:
-
-```text
-SCOREBOARD SUMMARY: PASS=<non-zero> FAIL=0
-FUNCTIONAL COVERAGE SUMMARY
-REGRESSION PASSED
-```
-
----
-
-## Waveform Proof
-
-### Read from Empty Memory
-![Read Empty](screenshots/ddr_read_empty.png)
-
-### Write Transaction
-![Write](screenshots/ddr_write_transaction.png)
-
-### Readback Verification
-![Readback](screenshots/ddr_readback_verification.png)
-
-### Overwrite and Final Readback
-![Overwrite](screenshots/ddr_overwrite_readback.png)
-
----
-
-## Key Concepts Demonstrated
-
-- SystemVerilog testbench development
-- Generator / Driver / Monitor / Scoreboard architecture
-- UVM-inspired modular verification structure
-- SVA-based protocol checking
-- Constrained randomized transaction generation
-- Functional coverage tracking with operation/address/cross bins
-- Scoreboard-based self-checking validation
-- Waveform and log-based debug
-- Regression scripting with Python
+See [upgrade validation](proof/UPGRADE_VALIDATION.md).
