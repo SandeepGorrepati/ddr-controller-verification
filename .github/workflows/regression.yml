@@ -14,8 +14,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y iverilog
+      - name: Reject incomplete regression evidence
+        run: python3 -m unittest discover -s scripts -p 'test_regression_results.py' -v
       - name: Modular directed environment
         run: python3 scripts/run_regression.py
+      - name: Reject an actual silenced monitor
+        run: python3 scripts/check_monitor_mutation.py
       - name: Pipelined traffic against independent oracle
         shell: bash
         run: |

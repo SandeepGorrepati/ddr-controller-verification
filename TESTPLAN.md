@@ -73,3 +73,23 @@ the DUT response-valid and, on response cycles, every data word to the oracle.
   Consecutive-read checking comes from the separate streaming oracle test.
 
 See [README](README.md) and [dated upgrade evidence](proof/UPGRADE_VALIDATION.md).
+
+## Regression-result integrity
+
+The default generator emits 15 transactions, including eight reads. The modular
+runner requires exactly one scoreboard summary with 15 passes / zero failures,
+and one protocol summary with eight reads, eight responses and positive checked
+cycles. It rejects empty, truncated, duplicated or contradictory summaries.
+Update these explicit expectations if the directed generator contract changes.
+
+Nine Python negative-control tests exercise the result parser. A separate CI
+mutation suppresses both actual transaction-valid outputs in a temporary copy of
+the monitor; simulation may exit zero and report FAIL=0, but the runner must
+reject PASS=0. The normal DUT and monitor are not modified by the mutation test.
+
+```bash
+python3 -m unittest discover -s scripts -p 'test_regression_results.py' -v
+python3 scripts/check_monitor_mutation.py
+```
+
+The independent streaming oracle remains a separate check of the real DUT.

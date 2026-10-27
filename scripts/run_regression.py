@@ -29,6 +29,36 @@ def run(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(cmd, cwd=cwd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=60)
 
 
+EXPECTED_SCOREBOARD_CHECKS = 15  # tb/generator.sv: NUM_TXNS
+EXPECTED_DIRECTED_READS = 8      # default serialized directed stimulus
+
+
+def validate_output(output: str) -> str | None:
+    """Reject vacuous/truncated passes, even when the simulator exits zero."""
+    import re
+    if "[SCB][FAIL]" in output or "CHECK FAIL" in output or re.search(r"FAIL=[1-9]", output):
+        return "checker failure"
+    if "SVA FAIL" in output or "ASSERTION FAIL" in output:
+        return "assertion failure"
+    summaries = re.findall(r"^SCOREBOARD SUMMARY: PASS=(\d+) FAIL=(\d+)\s*$",
+                           output, re.MULTILINE)
+    if len(summaries) != 1:
+        return "expected exactly one scoreboard summary"
+    passed, failed = map(int, summaries[0])
+    if passed != EXPECTED_SCOREBOARD_CHECKS or failed:
+        return f"expected {EXPECTED_SCOREBOARD_CHECKS} checked transactions, got PASS={passed} FAIL={failed}"
+    protocols = re.findall(r"^READS=(\d+) RESPONSES=(\d+) PASS=(\d+) FAIL=(\d+)\s*$",
+                           output, re.MULTILINE)
+    if len(protocols) != 1:
+        return "expected exactly one protocol summary"
+    reads, responses, cycles, failures = map(int, protocols[0])
+    if reads != EXPECTED_DIRECTED_READS or responses != reads or cycles <= 0 or failures:
+        return f"incomplete protocol checks: reads={reads} responses={responses} cycles={cycles} failures={failures}"
+    if "FUNCTIONAL COVERAGE SUMMARY" not in output:
+        return "coverage summary missing"
+    return None
+
+
 def main() -> int:
     BUILD.mkdir(exist_ok=True)
     PROOF.mkdir(exist_ok=True)
@@ -49,21 +79,9 @@ def main() -> int:
     if sim_res.returncode != 0:
         print("REGRESSION FAILED: simulator exited nonzero")
         return 1
-    import re
-    if "[SCB][FAIL]" in sim_res.stdout or "CHECK FAIL" in sim_res.stdout or re.search(r"FAIL=[1-9]", sim_res.stdout):
-        print("REGRESSION FAILED: checker failure")
-        return 1
-    if "SCOREBOARD SUMMARY" not in sim_res.stdout:
-        print("REGRESSION FAILED: scoreboard summary missing")
-        return 1
-    if "FAIL=0" not in sim_res.stdout:
-        print("REGRESSION FAILED: non-zero scoreboard failures")
-        return 1
-    if "SVA FAIL" in sim_res.stdout or "ASSERTION FAIL" in sim_res.stdout:
-        print("REGRESSION FAILED: assertion failure detected")
-        return 1
-    if "FUNCTIONAL COVERAGE SUMMARY" not in sim_res.stdout:
-        print("REGRESSION FAILED: coverage summary missing")
+    failure = validate_output(sim_res.stdout)
+    if failure is not None:
+        print(f"REGRESSION FAILED: {failure}")
         return 1
 
     print(f"REGRESSION PASSED: log saved to {LOG}")
