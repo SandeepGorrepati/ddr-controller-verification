@@ -1,61 +1,75 @@
-# DDR Controller Verification Test Plan
+# Request/response memory verification test plan
 
-## Objective
-Verify a simplified DDR-style memory controller using a modular SystemVerilog environment with generator, driver, monitor, scoreboard, SVA protocol checks, functional coverage tracking, and regression logs.
+## Contract under test
 
-## DUT Interface
-| Signal | Direction | Description |
-|---|---|---|
-| `req_valid` | input | Request valid from driver |
-| `req_ready` | output | DUT ready to accept request |
-| `req_write` | input | 1 = write, 0 = read |
-| `req_addr[7:0]` | input | 256-entry memory address |
-| `req_wdata[31:0]` | input | Write data |
-| `resp_valid` | output | Read response valid |
-| `resp_rdata[31:0]` | output | Read response data |
+This repository verifies a simplified 256×32 memory, not a DDR4 controller or PHY.
+There are no DRAM banks, ACT/PRE commands, refresh, bursts or DDR timing parameters.
 
-## Verification Architecture
-`generator -> driver -> DUT -> monitor -> scoreboard`
-
-Additional checkers:
-- `ddr_assertions.sv`: SVA protocol checks
-- `coverage_tracker.sv`: operation/address/cross coverage counters
-- `scripts/run_regression.py`: compile/run/log regression flow
-
-## Test Scenarios
-| ID | Scenario | Expected Result |
-|---|---|---|
-| T1 | Read empty address | Returns `0x00000000` |
-| T2 | Write address `0x10` | Scoreboard records expected memory data |
-| T3 | Read back address `0x10` | Returns written data |
-| T4 | Write address `0x20` | Scoreboard records expected memory data |
-| T5 | Read back address `0x20` | Returns written data |
-| T6 | Overwrite address `0x20` | Scoreboard updates expected data |
-| T7 | Read back overwritten address | Returns latest written data |
-| T8-T15 | Constrained randomized write/read pairs | Readback matches randomized write data |
-
-## SVA Checks
-| Assertion | Intent |
+| Interface behavior | Expected result |
 |---|---|
-| `p_read_response_within_4_cycles` | Accepted read request must produce `resp_valid` within 1-4 cycles |
-| `p_no_spurious_response` | `resp_valid` must not appear without a pending read |
-| `p_known_addr_on_accept` | Accepted request address must not be X/Z |
+| Request acceptance | req_valid && req_ready at a rising edge; req_ready is always 1 |
+| Write | Updates one word; does not generate a response |
+| Read | Read accepted at edge N produces resp_valid/data after edge N+1 |
+| Consecutive reads | One response per cycle after the initial latency |
+| Read completion and write to the same word | Response observes pre-write data on the completion edge |
+| Asynchronous active-high reset | Clears memory and cancels outstanding reads |
+| Response flow | No backpressure, transaction IDs or reordering |
 
-## Functional Coverage Tracking
-| Coverage bin | Intent |
-|---|---|
-| Operation bins | Count read and write transactions |
-| Address range bins | Count low/mid/high address-range activity |
-| Response bin | Count observed read responses |
-| Cross bins | Count read/write distribution across address ranges |
+## Verification layers and traceability
 
-## Pass Criteria
-- Scoreboard summary reports `FAIL=0`
-- No `SVA FAIL` or `ASSERTION FAIL` messages appear
-- Functional coverage summary is printed
-- Regression log is saved in `proof/ddr_regression.log`
+| Feature | Executed source / checker | Scope |
+|---|---|---|
+| Reset-zero reads, write/readback and overwrites | Modular generator/driver/monitor/scoreboard, tb/tb_top.sv | Directed serialized environment |
+| Operation/address/cross activity | tb/coverage_tracker.sv | Manual counters for their defined bins |
+| Exact response timing and missing/spurious responses | tb/ddr_assertions.sv | Procedural edge-sampled checks; not concurrent SVA declarations |
+| Known accepted address/control/write data and known response data | tb/ddr_assertions.sv | Procedural $isunknown checks and $fatal on failure |
+| Pipelined reads, mixed traffic, repeated/boundary addresses and reset during traffic | scripts/gen_stress.py + tb/tb_stress.sv | Independent Python cycle oracle; real-DUT comparison |
+| Data integrity and response-valid on every stress cycle | tb/tb_stress.sv samples after nonblocking updates | Exact expected valid/data, not a 1–4-cycle tolerance |
 
-## Run Command
+The procedural checker samples before the DUT's nonblocking updates. Its two
+accept-history registers account for that sampling phase; they do not describe
+two cycles of post-edge DUT latency. The stress test samples after the updates
+and directly checks the one-cycle contract.
+
+The current checker does not define the former
+`p_read_response_within_4_cycles` or other named concurrent properties.
+The older test-plan descriptions and older logs are not the current contract.
+
+## Reproduce the modular regression
+
 ```bash
 python3 scripts/run_regression.py
 ```
+
+The script compiles the modular environment, runs it with a timeout, saves
+`proof/ddr_regression.log`, and rejects compile/simulator errors, checker
+failures, missing summaries and nonzero failure counts.
+
+## Reproduce the independent streaming regression
+
+```bash
+python3 scripts/gen_stress.py
+iverilog -g2012 -s tb_stress -o build/stress rtl/ddr_controller.sv tb/ddr_assertions.sv tb/tb_stress.sv
+vvp build/stress
+```
+
+For seed 20261022, the generator supplies 2,200 cycles. The established baseline
+checks 1,329 read responses; confirm the actual summary for each run.
+Reset clears the Python memory and pending-response state. The SV test compares
+the DUT response-valid and, on response cycles, every data word to the oracle.
+
+## Acceptance criteria and limits
+
+- Compilation and simulation exit successfully; watchdogs do not expire.
+- The modular scoreboard reports zero failures and the required summaries.
+- The stress test has no valid/data mismatch or procedural CHECK FAIL.
+- Current CI runs both layers and uploads logs as memory-evidence artifacts.
+- Protocol counters reset with the DUT; their final summary describes the last
+  reset epoch. The oracle's cycle/response totals describe the entire vector file.
+- Coverage is scoped to the manually defined bins and directed/oracle scenarios.
+  No complete DDR, UVM class-library, concurrent-SVA or exhaustive-coverage claim
+  follows from these results.
+- The modular legacy monitor is not a general outstanding-transaction scoreboard.
+  Consecutive-read checking comes from the separate streaming oracle test.
+
+See [README](README.md) and [dated upgrade evidence](proof/UPGRADE_VALIDATION.md).

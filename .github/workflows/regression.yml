@@ -1,9 +1,9 @@
 name: Memory regression
 on:
   push:
-    paths: ['rtl/**', 'tb/**', 'scripts/**', '.github/workflows/**', 'formal/**']
+    paths: ['rtl/**', 'tb/**', 'scripts/**', '.github/workflows/**', 'formal/**', 'TESTPLAN.md']
   pull_request:
-    paths: ['rtl/**', 'tb/**', 'scripts/**', '.github/workflows/**', 'formal/**']
+    paths: ['rtl/**', 'tb/**', 'scripts/**', '.github/workflows/**', 'formal/**', 'TESTPLAN.md']
   workflow_dispatch:
 permissions:
   contents: read
